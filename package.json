@@ -1,0 +1,25 @@
+{
+  "name": "solidityproxy",
+  "version": "1.0.0",
+  "description": "",
+  "main": "truffle-config.js",
+  "scripts": {
+    "test": "truffle test --network development",
+    "ganache-cli": "ganache-cli -m 'stuff denial chuckle permit shell orbit priority solution dog cool stone blush' -p 7545 -i 711 -a 20 -e 100000 -h 0.0.0.0 -g 1000000000 -l 8000000 -v --noVMErrorsOnRPCResponse",
+    "migrate": "truffle migrate --reset --network development",
+    "compile": "truffle compile --all"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/LycrusHamster/SolidityProxy.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/LycrusHamster/SolidityProxy/issues"
+  },
+  "homepage": "https://github.com/LycrusHamster/SolidityProxy#readme",
+  "dependencies": {
+    "truffle-hdwallet-provider": "^1.0.1"
+  }
+}

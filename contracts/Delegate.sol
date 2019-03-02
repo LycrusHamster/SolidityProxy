@@ -20,7 +20,7 @@ contract Delegate is Base {
             fallback();
         } else {
             //if goes here, the target function must not be found;
-            returnAsm(true, notFoundMark);
+            returnAsm(false, notFoundMark);
         }
 
 

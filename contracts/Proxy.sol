@@ -139,7 +139,6 @@ contract Proxy is Base {
             returnAsm(error, returnData);
         }
 
-        //not unknow function
         uint256 len = sysGetDelegateCount();
         for (uint256 i = 0; i < len; i++) {
             bool isFound;
@@ -167,7 +166,7 @@ contract Proxy is Base {
         require(delegateTo != address(0), "delegateTo must not be 0x00");
         bool success;
         (success, returnData) = delegateTo.delegatecall(callData);
-        if (success == false && keccak256(returnData) == keccak256(notFoundMark)) {
+        if (success == true && keccak256(returnData) == keccak256(notFoundMark)) {
             //the delegate returns ```notFoundMark``` notFoundMark, which means invoke goes to wrong contract or function doesn't exist
             return (false, true, returnData);
         } else {

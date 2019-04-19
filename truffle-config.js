@@ -23,7 +23,7 @@ module.exports = {
       port: 7545,
       network_id: '*', // * for Match any network id
       // gas: 8000000,
-      gas: 7826038,
+      gas: 6721975,
       // gasPrice: 4000000000
       gasPrice: 4000000000
     }
@@ -34,7 +34,7 @@ module.exports = {
     }, */
   compilers: {
     solc: {
-      // version: "0.4.24", // let's use the native for faster work
+      version: '0.5.7', // let's use the native for faster work
       settings: {
         optimizer: {
           enabled: true // Default: false
@@ -45,6 +45,7 @@ module.exports = {
     }
   },
   mocha: {
-    enableTimeouts: false
+    enableTimeouts: false,
+    bail: true
   }
 };

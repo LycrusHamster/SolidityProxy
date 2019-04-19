@@ -1,4 +1,4 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.7;
 
 contract Base {
     constructor () public{
@@ -25,7 +25,7 @@ contract Base {
     }
 
     modifier nonPayable(){
-        require(msg.value == 0, "");
+        require(msg.value == 0, "nonPayable");
         _;
     }
 

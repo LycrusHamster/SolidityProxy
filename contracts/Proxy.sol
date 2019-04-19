@@ -1,163 +1,459 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.5.7;
 
 import "./Base.sol";
+import "./EnhancedMap.sol";
+import "./EnhancedUniqueIndexMap.sol";
 
-contract Proxy is Base {
+contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     constructor (address admin) public {
-        sysSetAdmin(admin);
+        sysSaveSlotData(adminSlot, bytes32(uint256(admin)));
+        sysSaveSlotData(userSigZeroSlot, bytes32(uint256(0)));
+        sysSaveSlotData(systemSigZeroSlot, bytes32(uint256(0)));
+        sysSaveSlotData(outOfServiceSlot, bytes32(uint256(0)));
+        sysSaveSlotData(revertMessageSlot, bytes32(uint256(1)));
+        //sysSetDelegateFallback(address(0));
     }
 
     bytes32 constant adminSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("adminSlot"))))));
 
-    bytes32 constant delegateFallbackSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("delegateFallbackSlot"))))));
+    bytes32 constant revertMessageSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("revertMessageSlot"))))));
 
-    //index => address, array,  index starts from 1
-    //delegatesEnhancedMappingSlot is the mapping's slot, and contains length (so we called enhanced :))
-    bytes32 constant delegatesEnhancedMappingSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("delegatesEnhancedMappingSlot"))))));
+    bytes32 constant outOfServiceSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("outOfServiceSlot"))))));
 
-    //address => index, mapping, index starts from 1, 0 means not indexed
-    //delegatesIndexSlot is the mapping's slot, and contains length (so we called enhanced :))
-    bytes32 constant delegatesIndexEnhancedMappingSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("delegatesIndexMappingSlot"))))));
+    //address <===>  index EnhancedUniqueIndexMap
+    //0x2f80e9a12a11b80d2130b8e7dfc3bb1a6c04d0d87cc5c7ea711d9a261a1e0764
+    bytes32 constant delegatesSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("delegatesSlot"))))));
 
+    //bytes4 abi ===> address, both not 0x00
+    //0xba67a9e2b7b43c3c9db634d1c7bcdd060aa7869f4601d292a20f2eedaf0c2b1c
+    bytes32 constant userAbiSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("userAbiSlot"))))));
+    //0x26dd6db4b525100805e2ba711e5ec65e8d02a43f8583b7e1dd378be498ccc357
+    //userAbiSlot + search
 
-    function sysGetDelegateCount() public view returns (uint256){
-        return sysEnhancedMappingLen(delegatesEnhancedMappingSlot);
+    //0xe2bb2e16cbb16a10fab839b4a5c3820d63a910f4ea675e7821846c4b2d3041dc
+    bytes32 constant userSigZeroSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("userSigZeroSlot"))))));
+
+    //bytes4 abi ===> address, both not 0x00
+    //0xf45f133e77d47664a73fe77d93af7f022fee9644633c93c56b9660305e8cd4f9
+    bytes32 constant systemAbiSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("systemAbiSlot"))))));
+    //0x391284c27e52216f43c622f2c79ad3cad53a4899f0c4ba0f6b94c51e9d16cb1f
+    //systemAbiSlot + search
+
+    //0x1fd86a48a422b6754f6ce807c7ae65bd19c8b9e45efa56c02336b3d1a131f340
+    bytes32 constant systemSigZeroSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("systemSigZeroSlot"))))));
+
+    event DelegateSet(address delegate, bool activated);
+    event AbiSet(bytes4 abi, address delegate, bytes32 slot);
+    event PrintBytes(bytes data);
+    //===================================================================================
+
+    function sysCountDelegate() public view returns (uint256){
+        return sysUniqueIndexMapSize(delegatesSlot);
     }
 
-    function sysGetDelegateByIndex(uint256 index) public view returns (address){
-        return address(uint256(sysEnhancedMappingGet(delegatesEnhancedMappingSlot, bytes32(index))));
+    function sysGetDelegate(uint256 index) public view returns (address){
+        return address(uint256(sysUniqueIndexMapGetValue(delegatesSlot, index)));
     }
 
-    function sysGetIndexByDelegate(address addr) public view returns (uint256) {
-        return uint256(sysEnhancedMappingGet(delegatesIndexEnhancedMappingSlot, bytes32(uint256(addr))));
+    function sysGetDelegateIndex(address addr) public view returns (uint256) {
+        return uint256(sysUniqueIndexMapGetIndex(delegatesSlot, bytes32(uint256(addr))));
     }
 
-    function sysAddDelegate(address _input) public onlyAdmin {
-        bytes32 input = bytes32(uint256(_input));
-        require(uint256(sysEnhancedMappingGet(delegatesIndexEnhancedMappingSlot, input)) == 0, "adding existing address to delegate pool is forbidden");
-        uint256 last = sysEnhancedMappingLen(delegatesEnhancedMappingSlot);
-        last ++;
-        sysEnhancedMappingSet(delegatesEnhancedMappingSlot, bytes32(last), input);
-        sysEnhancedMappingSet(delegatesIndexEnhancedMappingSlot, input, bytes32(last));
-    }
-
-    function sysDelDelegate(address _input) public onlyAdmin {
-        bytes32 input = bytes32(uint256(_input));
-        bytes32 index = sysEnhancedMappingGet(delegatesIndexEnhancedMappingSlot, input);
-        require(index != 0, "deleting wrong address from delegate pool is forbidden");
-        bytes32 last = bytes32(sysEnhancedMappingLen(delegatesEnhancedMappingSlot));
-        bytes32 lastValue = sysEnhancedMappingGet(delegatesEnhancedMappingSlot, last);
-        if (index != last) {
-            //move the last to the current place
-
-            sysEnhancedMappingSet(delegatesEnhancedMappingSlot, index, lastValue);
-            sysEnhancedMappingSet(delegatesIndexEnhancedMappingSlot, lastValue, index);
+    function sysGetDelegates() public view returns (address[] memory){
+        uint256 count = sysCountDelegate();
+        address[] memory delegates = new address[](count);
+        for (uint256 i = 0; i < count; i++) {
+            delegates[i] = sysGetDelegate(i + 1);
         }
-        sysEnhancedMappingSet(delegatesEnhancedMappingSlot, last, bytes32(0x00));
-        sysEnhancedMappingSet(delegatesIndexEnhancedMappingSlot, input, bytes32(0x00));
+        return delegates;
     }
 
-    function sysGetDelegateFallback() public view returns (address){
-        return address(uint256(sysLoadSlotData(delegateFallbackSlot)));
+    //add delegates on current version
+    function sysAddDelegates(address[] memory _inputs) public onlyAdmin {
+        for (uint256 i = 0; i < _inputs.length; i ++) {
+            sysUniqueIndexMapAdd(delegatesSlot, bytes32(uint256(_inputs[i])));
+            emit DelegateSet(_inputs[i], true);
+        }
     }
 
-    function sysSetDelegateFallback(address _input) public onlyAdmin {
-        sysSaveSlotData(delegateFallbackSlot, bytes32(uint256(_input)));
+    //delete delegates
+    //be careful, if you delete a delegate, the index will change
+    function sysDelDelegates(address[] memory _inputs) public onlyAdmin {
+        for (uint256 i = 0; i < _inputs.length; i ++) {
+
+            //travers all abis to delete those abis mapped to the given address
+            uint256 j;
+            uint256 k;
+            /*bytes4[] memory toDeleteSelectors = new bytes4[](count + 1);
+            uint256 pivot = 0;*/
+            uint256 count = sysCountUserSelectors();
+
+            /*for (j = 0; j < count; j ++) {
+                bytes4 selector;
+                address delegate;
+                (selector, delegate) = sysGetUserSelectorAndDelegateByIndex(j + 1);
+                if (delegate == _inputs[i]) {
+                    toDeleteSelectors[pivot] = selector;
+                    pivot++;
+                }
+            }
+            pivot = 0;
+            while (toDeleteSelectors[pivot] != bytes4(0x00)) {
+                sysSetUserSelectorAndDelegate(toDeleteSelectors[pivot], address(0));
+                pivot++;
+            }*/
+            k = 1;
+            for (j = 0; j < count; j++) {
+                bytes4 selector;
+                address delegate;
+                (selector, delegate) = sysGetUserSelectorAndDelegateByIndex(k);
+                if (delegate == _inputs[i]) {
+                    sysSetUserSelectorAndDelegate(selector, address(0));
+                }
+                else {
+                    k++;
+                }
+            }
+
+            if (sysGetUserSigZero() == _inputs[i]) {
+                sysSetUserSigZero(address(0x00));
+            }
+
+            count = sysCountSystemSelectors();
+            /*toDeleteSelectors = new bytes4[](count + 1);
+            pivot = 0;
+            for (j = 0; j < count; j ++) {
+                bytes4 selector;
+                address delegate;
+                (selector, delegate) = sysGetSystemSelectorAndDelegateByIndex(j + 1);
+
+                if (delegate == _inputs[i]) {
+
+                    toDeleteSelectors[pivot] = selector;
+                    pivot++;
+                }
+            }
+            pivot = 0;
+            while (toDeleteSelectors[pivot] != bytes4(0x00)) {
+                sysSetSystemSelectorAndDelegate(toDeleteSelectors[pivot], address(0));
+                pivot++;
+            }*/
+            k = 1;
+            for (j = 0; j < count; j++) {
+                bytes4 selector;
+                address delegate;
+                (selector, delegate) = sysGetSystemSelectorAndDelegateByIndex(k);
+                if (delegate == _inputs[i]) {
+                    sysSetSystemSelectorAndDelegate(selector, address(0));
+
+                }
+                else {
+                    k++;
+                }
+            }
+
+            if (sysGetSystemSigZero() == _inputs[i]) {
+                sysSetSystemSigZero(address(0x00));
+            }
+
+
+            sysUniqueIndexMapDelArrange(delegatesSlot, bytes32(uint256(_inputs[i])));
+            emit DelegateSet(_inputs[i], false);
+        }
     }
 
-    function sysGetAdmin() public view returns(address){
+    //add and delete delegates
+    function sysReplaceDelegates(address[] memory _delegatesToDel, address[] memory _delegatesToAdd) public onlyAdmin {
+        require(_delegatesToDel.length == _delegatesToAdd.length, "sysReplaceDelegates, length does not match");
+        for (uint256 i = 0; i < _delegatesToDel.length; i ++) {
+            sysUniqueIndexMapReplace(delegatesSlot, bytes32(uint256(_delegatesToDel[i])), bytes32(uint256(_delegatesToAdd[i])));
+            emit DelegateSet(_delegatesToDel[i], false);
+            emit DelegateSet(_delegatesToAdd[i], true);
+        }
+    }
+
+    //=============================================
+
+    function sysGetUserSigZero() public view returns (address){
+        return address(uint256(sysLoadSlotData(userSigZeroSlot)));
+    }
+
+    function sysSetUserSigZero(address _input) public onlyAdmin {
+        sysSaveSlotData(userSigZeroSlot, bytes32(uint256(_input)));
+    }
+
+    function sysGetSystemSigZero() public view returns (address){
+        return address(uint256(sysLoadSlotData(systemSigZeroSlot)));
+    }
+
+    function sysSetSystemSigZero(address _input) internal {
+        sysSaveSlotData(systemSigZeroSlot, bytes32(uint256(_input)));
+    }
+
+    function sysGetAdmin() public view returns (address){
         return address(uint256(sysLoadSlotData(adminSlot)));
     }
 
-    function sysSetAdmin(address _input) private {
+    function sysSetAdmin(address _input) external onlyAdmin {
         sysSaveSlotData(adminSlot, bytes32(uint256(_input)));
     }
 
-    function sysEnhancedMappingSet(bytes32 mappingSlot, bytes32 key, bytes32 value) internal {
+    function sysGetRevertMessage() public view returns (uint256){
+        return uint256(sysLoadSlotData(revertMessageSlot));
+    }
 
-        uint256 length = uint256(sysLoadSlotData(mappingSlot));
-        bytes32 elementOffset = bytes32(keccak256(abi.encodePacked(key, mappingSlot)));
-        bytes32 storedValue = sysLoadSlotData(elementOffset);
-        if (value == storedValue) {
-            //needn't set same value;
-        } else if (value == bytes32(0x00)) {
-            //deleting value
-            sysSaveSlotData(elementOffset, value);
-            length--;
-            sysSaveSlotData(mappingSlot, bytes32(length));
-        } else if (storedValue == bytes32(0x00)) {
-            //setting new value
-            sysSaveSlotData(elementOffset, value);
-            length++;
-            sysSaveSlotData(mappingSlot, bytes32(length));
+    function sysSetRevertMessage(uint256 _input) external onlyAdmin {
+        sysSaveSlotData(revertMessageSlot, bytes32(_input));
+    }
+
+    function sysGetOutOfService() public view returns (uint256){
+        return uint256(sysLoadSlotData(outOfServiceSlot));
+    }
+
+    function sysSetOutOfService(uint256 _input) external onlyAdmin {
+        sysSaveSlotData(outOfServiceSlot, bytes32(_input));
+    }
+
+    //=============================================
+
+    //abi and delegates should not be 0x00 in mapping;
+    //set delegate to 0x00 for delete the entry
+    function sysSetUserSelectorsAndDelegates(bytes4[] memory selectors, address[] memory delegates) public onlyAdmin {
+        require(selectors.length == delegates.length, "sysSetUserSelectorsAndDelegates, length does not matchs");
+        for (uint256 i = 0; i < selectors.length; i ++) {
+            sysSetUserSelectorAndDelegate(selectors[i], delegates[i]);
+        }
+    }
+
+    function sysSetUserSelectorAndDelegate(bytes4 selector, address delegate) public onlyAdmin {
+        sysSetSelectorAndDelegate(userAbiSlot, selector, delegate);
+    }
+
+    function sysGetUserDelegate(bytes4 selector) public view returns (address){
+        return sysGetDelegate(userAbiSlot, selector);
+    }
+
+
+    function sysCountUserSelectors() public view returns (uint256){
+        return sysCountSelectors(userAbiSlot);
+    }
+
+    function sysGetUserSelectorAndDelegateByIndex(uint256 index) public view returns (bytes4, address){
+        return sysGetSelectorAndDelegateByIndex(userAbiSlot, index);
+    }
+
+    function sysGetUserSelectorsAndDelegates() public view returns (bytes4[] memory selectors, address[] memory delegates){
+        return sysGetSelectorsAndDelegates(userAbiSlot);
+    }
+
+    function sysClearUserSelectorsAndDelegates() external onlyAdmin {
+        sysClearSelectorsAndDelegates(userAbiSlot);
+    }
+    //=============================================
+
+    function sysSetSystemSelectorAndDelegate(bytes4 selector, address delegate) /*internal*/ public {
+        sysSetSelectorAndDelegate(systemAbiSlot, selector, delegate);
+    }
+
+    function sysGetSystemDelegate(bytes4 selector) public view returns (address){
+        return sysGetDelegate(systemAbiSlot, selector);
+    }
+
+    function sysCountSystemSelectors() public view returns (uint256){
+        return sysCountSelectors(systemAbiSlot);
+    }
+
+    function sysGetSystemSelectorAndDelegateByIndex(uint256 index) public view returns (bytes4, address){
+        return sysGetSelectorAndDelegateByIndex(systemAbiSlot, index);
+    }
+
+    function sysGetSystemSelectorsAndDelegates() public view returns (bytes4[] memory selectors, address[] memory delegates){
+        return sysGetSelectorsAndDelegates(systemAbiSlot);
+    }
+
+    function sysClearSystemSelectorsAndDelegates() external onlyAdmin {
+        sysClearSelectorsAndDelegates(systemAbiSlot);
+    }
+
+    //=============================================
+
+    function sysSetSelectorAndDelegate(bytes32 slot, bytes4 selector, address delegate) internal {
+
+        require(selector != bytes4(0x00), "sysSetSelectorAndDelegate, selector should not be selector");
+        //require(delegates[i] != address(0x00));
+        bytes32 searchSlot = calcSearchSlot(slot);
+        address oldDelegate = address(uint256(sysEnhancedMapGet(slot, bytes32(selector))));
+        if (oldDelegate == delegate) {
+            //if oldDelegate == 0 & delegate == 0
+            //if oldDelegate == delegate != 0
+            //do nothing here
+        }
+        if (oldDelegate == address(0x00)) {
+            //delegate != 0
+            //adding new value
+            sysEnhancedMapAdd(slot, bytes32(selector), bytes32(uint256(delegate)));
+            sysUniqueIndexMapAdd(searchSlot, bytes32(selector));
+        }
+        if (delegate == address(0x00)) {
+            //oldDelegate != 0
+            //deleting new value
+            sysEnhancedMapDel(slot, bytes32(selector));
+            //sysUniqueIndexMapDelArrange(searchSlot, bytes32(selector));
+            sysUniqueIndexMapDel(searchSlot, bytes32(selector));
+
         } else {
+            //oldDelegate != delegate & oldDelegate != 0 & delegate !=0
             //updating
-            sysSaveSlotData(elementOffset, value);
+            sysEnhancedMapReplace(slot, bytes32(selector), bytes32(uint256(delegate)));
         }
-        return;
+
+
     }
 
-    function sysEnhancedMappingGet(bytes32 mappingSlot, bytes32 key) internal view returns (bytes32){
-        bytes32 elementOffset = bytes32(keccak256(abi.encodePacked(key, mappingSlot)));
-        return sysLoadSlotData(elementOffset);
+    function sysGetDelegate(bytes32 slot, bytes4 selector) internal view returns (address){
+        return address(uint256(sysEnhancedMapGet(slot, bytes32(selector))));
     }
 
-    function sysEnhancedMappingLen(bytes32 mappingSlot) internal view returns (uint256){
-        return uint256(sysLoadSlotData(mappingSlot));
+    function sysCountSelectors(bytes32 slot) internal view returns (uint256){
+        return sysEnhancedMapSize(slot);
     }
 
-    function sysLoadSlotData(bytes32 slot) internal view returns (bytes32){
-        //ask a stack position
-        bytes32 ret;
-        assembly{
-            ret := sload(slot)
+    function sysGetSelector(bytes32 slot, uint256 index) internal view returns (bytes4){
+        bytes32 searchSlot = calcSearchSlot(slot);
+        bytes4 selector = bytes4(sysUniqueIndexMapGetValue(searchSlot, index));
+        return selector;
+    }
+
+    function sysGetSelectorAndDelegateByIndex(bytes32 slot, uint256 index) internal view returns (bytes4, address){
+        bytes4 selector = sysGetSelector(slot, index);
+        //require(selector != bytes4(0x00), "sysGetSelectorAndDelegateByIndex, selector shouldn't be 0x00");
+        //lycrus
+        //require(selector != bytes4(0x00), sysPrintUint256ToHex(index)); // 3
+        address delegate = sysGetDelegate(slot, selector);
+        return (selector, delegate);
+    }
+
+    function sysGetSelectorsAndDelegates(bytes32 slot) internal view returns (bytes4[] memory selectors, address[] memory delegates){
+        uint256 count = sysCountSelectors(slot);
+        selectors = new bytes4[](count);
+        delegates = new address[](count);
+        for (uint256 i = 0; i < count; i ++) {
+            (selectors[i], delegates[i]) = sysGetSelectorAndDelegateByIndex(slot, i + 1);
         }
-        return ret;
     }
 
-    function sysSaveSlotData(bytes32 slot, bytes32 data) internal {
-        assembly{
-            sstore(slot, data)
+    function sysClearSelectorsAndDelegates(bytes32 slot) internal {
+        uint256 count = sysCountSelectors(slot);
+        for (uint256 i = 0; i < count; i ++) {
+
+            bytes4 selector;
+            address delegate;
+            //always delete the first, after 'count' time, it will clear all
+            (selector, delegate) = sysGetSelectorAndDelegateByIndex(slot, 1);
+            sysSetSelectorAndDelegate(slot, selector, address(0x00));
         }
     }
+
+    //=====================internal functions=====================
 
     //since low-level address.delegateCall is available in solidity,
     //we don't need to write assembly
-    function() payable external {
+    function() payable external outOfService {
 
+        /*
+        the default transfer will set data to empty,
+        so that the msg.data.length = 0 and msg.sig = bytes4(0x00000000),
+
+        however some one can manually set msg.sig to 0x00000000 and tails more man-made data,
+        so here we have to forward all msg.data to delegates
+        */
+        address targetDelegate;
+
+        //for look-up table
+        if (msg.sig == bytes4(0x00000000)) {
+            targetDelegate = sysGetUserSigZero();
+            if (targetDelegate != address(0x00)) {
+                delegateCallExt(targetDelegate, msg.data);
+            }
+
+            targetDelegate = sysGetSystemSigZero();
+            if (targetDelegate != address(0x00)) {
+                delegateCallExt(targetDelegate, msg.data);
+            }
+        } else {
+
+            /*            if (msg.sig == bytes4(0x70318695)) {
+                            bytes memory b = hex"9999000000000000000000000000000000000000000000000000000000111111";
+                            returnAsm(true, b);
+                        }*/
+
+            targetDelegate = sysGetUserDelegate(msg.sig);
+            if (targetDelegate != address(0x00)) {
+                delegateCallExt(targetDelegate, msg.data);
+            }
+
+            //check system abi look-up table
+            targetDelegate = sysGetSystemDelegate(msg.sig);
+            if (targetDelegate != address(0x00)) {
+                delegateCallExt(targetDelegate, msg.data);
+            }
+        }
+
+        //goes here means this abi is not in the system abi look-up table
+        discover();
+
+        //hit here means not found selector
+        if (sysGetRevertMessage() == 1) {
+            revert(string(abi.encodePacked("function selector not found : ", sysPrintBytes4ToHex(msg.sig))));
+        } else {
+            revert();
+        }
+
+    }
+
+    function discover() internal {
         bool found = false;
         bool error;
         bytes memory returnData;
-
-        if (msg.sig == bytes4(0x00000000) && sysGetDelegateFallback() != address(0x00)) {
-            /*
-            the default transfer will set data to empty,
-            so that the msg.data.length = 0 and msg.sig = bytes4(0x00000000)
-            */
-
-            (found, error, returnData) = redirect(sysGetDelegateFallback(), msg.data);
-            returnAsm(error, returnData);
-        }
-
-        uint256 len = sysGetDelegateCount();
+        address targetDelegate;
+        uint256 len = sysCountDelegate();
         for (uint256 i = 0; i < len; i++) {
-            bool isFound;
-            (isFound, error, returnData) = redirect(sysGetDelegateByIndex(i + 1), msg.data);
-            if (isFound) {
-                found = true;
-                break;
-            }
-        }
+            targetDelegate = sysGetDelegate(i + 1);
+            (found, error, returnData) = redirect(targetDelegate, msg.data);
+            if (found) {
+                if (msg.sig == bytes4(0x00000000)) {
+                    sysSetSystemSigZero(targetDelegate);
+                } else {
+                    sysSetSystemSelectorAndDelegate(msg.sig, targetDelegate);
+                }
 
-        if (found) {
-            returnAsm(error, returnData);
-        } else {
-            if (revertFriendly()) {
-                revert(string(abi.encodePacked("function selector not found : ", sysPrintBytes4ToHex(msg.sig))));
-            } else {
-                revert();
+                if (msg.sig == bytes4(0x70318695)) {
+                    if (error) {
+                        bytes memory b = hex"9999000000000000000000000000000000000000000000000000000000111111";
+                        returnAsm(true, b);
+                    } else {
+
+                        emit PrintBytes(returnData);
+                        bytes memory b = hex"1100000000000000000000000000000000000000000000000000000000111111";
+                        //bytes memory b = hex"8888000000000000000000000000000000000000000000000000000000111111";
+                        returnAsm(false, b);
+                    }
+                }
+
+                returnAsm(error, returnData);
+
+
             }
         }
+    }
+
+    function delegateCallExt(address targetDelegate, bytes memory callData) internal {
+        bool found = false;
+        bool error;
+        bytes memory returnData;
+        (found, error, returnData) = redirect(targetDelegate, callData);
+        require(found, "delegateCallExt to a delegate in the map but finally not found, this shouldn't happen");
+        returnAsm(error, returnData);
     }
 
     //since low-level ```<address>.delegatecall(bytes memory) returns (bool, bytes memory)``` can return returndata,
@@ -173,10 +469,6 @@ contract Proxy is Base {
             return (true, !success, returnData);
         }
 
-    }
-
-    function revertFriendly() internal pure returns (bool){
-        return true;
     }
 
     function sysPrintBytesToHex(bytes memory input) internal pure returns (string memory){
@@ -208,8 +500,30 @@ contract Proxy is Base {
         );
     }
 
+    function sysPrintUint256ToHex(uint256 input) internal pure returns (string memory){
+        return sysPrintBytesToHex(
+            abi.encodePacked(input)
+        );
+    }
+
+    ////byte4 abi <===> index
+    function calcSearchSlot(bytes32 slot) internal pure returns (bytes32){
+        return calcNewSlot(slot, "search");
+    }
+
     modifier onlyAdmin(){
         require(msg.sender == sysGetAdmin(), "only admin");
+        _;
+    }
+
+    modifier outOfService(){
+        if (sysGetOutOfService() == uint256(1)) {
+            if (sysGetRevertMessage() == 1) {
+                revert(string(abi.encodePacked("Proxy is out-of-service right now")));
+            } else {
+                revert();
+            }
+        }
         _;
     }
 

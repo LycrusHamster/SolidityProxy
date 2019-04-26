@@ -6,7 +6,7 @@ const Logic4 = artifacts.require('./Logic4.sol');
 const Logic5 = artifacts.require('./Logic5.sol');
 const LogicABI = artifacts.require('./LogicABI.sol');
 
-contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
+contract('ProxyDelegateUserLookUpTest ', async (accounts) => {
 
   let storage;
   let logic1;
@@ -56,10 +56,6 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
 
   before('setup', async () => {
     storage = await Storage.new(FROM_DEPLOYER);
-
-    res = await storage.sysGetSystemSelectorAndDelegateByIndex(0);
-    console.log('index 0 : ' + JSON.stringify(res));
-
     logic1 = await Logic1.new(FROM_DEPLOYER);
     logic2 = await Logic2.new(FROM_DEPLOYER);
     logic3 = await Logic3.new(FROM_DEPLOYER);
@@ -79,29 +75,24 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
   });
 
   it('init', async () => {
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
     expect(3).to.equal(delegates.length);
     expect(logic1.address).to.equal(delegates[0]);
     expect(logic2.address).to.equal(delegates[1]);
     expect(logic3.address).to.equal(delegates[2]);
 
-    res = await storage.sysGetSystemSelectorsAndDelegates();
-    sysSelectorsAndDelegates.sysSelectors = res.selectors;
-    sysSelectorsAndDelegates.sysDelegates = res.delegates;
-    expect(0).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
-
   });
 
   it('call add setBytes32_1 logic1', async () => {
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     expect(0).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
-    tx = await storage.sysSetUserSelectorAndDelegate(abi_setBytes32_1, logic1.address);
+    tx = await storage.sysSetSelectorAndDelegate(abi_setBytes32_1, logic1.address);
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     console.log('selectors & deletages : ');
@@ -109,7 +100,7 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
 
     expect(1).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
-    delegate = await storage.sysGetUserDelegate(abi_setBytes32_1);
+    delegate = await storage.sysGetDelegateBySelector(abi_setBytes32_1);
     expect(logic1.address).to.equal(delegate);
     console.log('abi_setBytes32_1 delegate' + delegate);
 
@@ -118,25 +109,18 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
 
     expect(testBytes32).to.equal(res);
 
-    res = await storage.sysGetSystemSelectorsAndDelegates();
-    sysSelectorsAndDelegates.sysSelectors = res.selectors;
-    sysSelectorsAndDelegates.sysDelegates = res.delegates;
-    console.log('selectors & deletages : ');
-    console.log(JSON.stringify(sysSelectorsAndDelegates));
-
-    expect(0).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
   });
 
   it('call add setUint256_2 logic2', async () => {
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     expect(1).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
-    tx = await storage.sysSetUserSelectorAndDelegate(abi_setUint256_2, logic2.address);
+    tx = await storage.sysSetSelectorAndDelegate(abi_setUint256_2, logic2.address);
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     console.log('selectors & deletages : ');
@@ -144,7 +128,7 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
 
     expect(2).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
-    delegate = await storage.sysGetUserDelegate(abi_setUint256_2);
+    delegate = await storage.sysGetDelegateBySelector(abi_setUint256_2);
     expect(logic2.address).to.equal(delegate);
     console.log('abi_setUint256_2 delegate' + delegate);
 
@@ -152,31 +136,23 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
     res = (await logicABI.getUint256_2()).toString('hex');
 
     expect(testUint256).to.equal('0x' + res);
-
-    res = await storage.sysGetSystemSelectorsAndDelegates();
-    sysSelectorsAndDelegates.sysSelectors = res.selectors;
-    sysSelectorsAndDelegates.sysDelegates = res.delegates;
-    console.log('selectors & deletages : ');
-    console.log(JSON.stringify(sysSelectorsAndDelegates));
-
-    expect(0).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
   });
 
   it('delete logic1', async () => {
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     expect(2).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
     tx = await storage.sysDelDelegates([logic1.address]);
 
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
     expect(2).to.equal(delegates.length);
     expect(logic2.address).to.equal(delegates[0]);
     expect(logic3.address).to.equal(delegates[1]);
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     console.log('selectors & deletages : ');
@@ -184,11 +160,11 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
 
     expect(1).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
-    delegate = await storage.sysGetUserDelegate(abi_setBytes32_1);
+    delegate = await storage.sysGetDelegateBySelector(abi_setBytes32_1);
     expect(emptyAddress).to.equal(delegate);
     console.log('abi_setBytes32_1 delegate' + delegate);
 
-    delegate = await storage.sysGetUserDelegate(abi_setUint256_2);
+    delegate = await storage.sysGetDelegateBySelector(abi_setUint256_2);
     expect(logic2.address).to.equal(delegate);
     console.log('abi_setUint256_2 delegate' + delegate);
 
@@ -197,7 +173,7 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
 
     tx = await storage.sysAddDelegates([logic4.address]);
 
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
     expect(3).to.equal(delegates.length);
     expect(logic2.address).to.equal(delegates[0]);
     expect(logic3.address).to.equal(delegates[1]);
@@ -205,16 +181,16 @@ contract('ProxyDelegateSystemLookUpTest ', async (accounts) => {
   });
 
 
-  it('sysSetUserSigZero to logic4', async () => {
+  it('sysSetSigZero to logic4', async () => {
 
-    res = await storage.sysGetUserSelectorsAndDelegates();
+    res = await storage.sysGetSelectorsAndDelegates();
     sysSelectorsAndDelegates.sysSelectors = res.selectors;
     sysSelectorsAndDelegates.sysDelegates = res.delegates;
     expect(1).to.equal(sysSelectorsAndDelegates.sysSelectors.length);
 
-    tx = await storage.sysSetUserSigZero(logic4.address);
+    tx = await storage.sysSetSigZero(logic4.address);
 
-    sysZero = await storage.sysGetUserSigZero();
+    sysZero = await storage.sysGetSigZero();
     expect(logic4.address).to.equal(sysZero);
   });
 

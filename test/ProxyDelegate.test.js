@@ -39,14 +39,12 @@ contract('ProxyDelegateTest ', async (accounts) => {
   });
 
   it('init', async () => {
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
     expect(0).to.equal(delegates.length);
 
-    userZero = await storage.sysGetUserSigZero();
+    userZero = await storage.sysGetSigZero();
     expect(emptyAddress).to.equal(userZero);
 
-    sysZero = await storage.sysGetSystemSigZero();
-    expect(emptyAddress).to.equal(sysZero);
   });
 
   //1
@@ -54,13 +52,13 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysAddDelegates([logic1.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(1).to.equal(delegatesCount);
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic1.address)).toNumber();
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic1.address);
   });
 
@@ -69,14 +67,14 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysAddDelegates([logic2.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(2).to.equal(delegatesCount);
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic2.address)).toNumber();
     expect(2).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic2.address);
   });
 
@@ -85,7 +83,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysReplaceDelegates([logic2.address],[logic3.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(2).to.equal(delegatesCount);
@@ -95,7 +93,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic3.address)).toNumber();
     expect(2).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic3.address);
   });
 
@@ -104,7 +102,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysDelDelegates([logic1.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(1).to.equal(delegatesCount);
@@ -114,7 +112,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic3.address)).toNumber();
     expect(1).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic3.address);
   });
 
@@ -123,7 +121,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysAddDelegates([logic1.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(2).to.equal(delegatesCount);
@@ -133,7 +131,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic3.address)).toNumber();
     expect(1).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic3.address);
   });
 
@@ -153,7 +151,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysDelDelegates([logic3.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(1).to.equal(delegatesCount);
@@ -163,7 +161,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic1.address)).toNumber();
     expect(1).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic1.address);
   });
 
@@ -172,27 +170,27 @@ contract('ProxyDelegateTest ', async (accounts) => {
     tx = await storage.sysAddDelegates([logic2.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(2).to.equal(delegatesCount);
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic2.address)).toNumber();
     expect(2).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic2.address);
 
     tx = await storage.sysAddDelegates([logic3.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
-    delegates = await storage.sysGetDelegates();
+    delegates = await storage.sysGetDelegateAddresses();
 
     expect(delegates.length).to.equal(delegatesCount);
     expect(3).to.equal(delegatesCount);
 
     delegateIndex = (await storage.sysGetDelegateIndex(logic3.address)).toNumber();
     expect(3).to.equal(delegateIndex);
-    delegate = await storage.sysGetDelegate(delegateIndex);
+    delegate = await storage.sysGetDelegateAddress(delegateIndex);
     expect(delegate).to.equal(logic3.address);
   });
 });

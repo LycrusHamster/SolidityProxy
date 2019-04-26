@@ -37,10 +37,10 @@ module.exports = {
       version: '0.5.7', // let's use the native for faster work
       settings: {
         optimizer: {
-          enabled: true // Default: false
-          // runs: 100     // Default: 200
-        }
-        // evmVersion: "homestead"  // Default: "byzantium"
+          enabled: true, // Default: false
+          runs: 200     // Default: 200
+        },
+        evmVersion: "petersburg"  // Default: "byzantium"
       }
     }
   },

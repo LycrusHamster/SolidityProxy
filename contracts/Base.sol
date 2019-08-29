@@ -86,16 +86,6 @@ contract Base {
             return tempAddress;
         }*/
 
-    modifier inConsignorMode(){
-        require(isConsignorMode(),"not in consignor mode");
-        _;
-    }
-
-    modifier inWalkThroughMode(){
-        require(!isConsignorMode(),"not in walk through mode");
-        _;
-    }
-
     modifier nonPayable(){
         require(msg.value == 0, "nonPayable");
         _;

@@ -35,6 +35,16 @@ contract Delegate is Base {
         defaultFallback();
     }
 
+    modifier inConsignorMode(){
+        require(isConsignorMode(),"not in consignor mode");
+        _;
+    }
+
+    modifier inWalkThroughMode(){
+        require(!isConsignorMode(),"not in walk through mode");
+        _;
+    }
+
     /*function() payable external {
         //target function doesn't hit normal functions
         //check if it's sig is 0x00000000 to call sysSaveSlotData

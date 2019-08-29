@@ -35,12 +35,12 @@ contract Base {
         }
         return false;
     }
-    //only in consignor mode
+    //only in consignor mode, or you get wrong data or throw exception, I don't wan't to check consignor mode here again for wasting of time
     function getConsignor() internal pure returns (address){
         return toAddressFromBytes32(msg.data,msg.data.length - 161);
     }
 
-    //only in consignor mode
+    //only in consignor mode, or you get wrong data or throw exception, I don't wan't to check consignor mode here again for wasting of time
     function getTargetContract() internal pure returns (address){
         return toAddressFromBytes32(msg.data,msg.data.length - 129);
     }
@@ -85,6 +85,16 @@ contract Base {
 
             return tempAddress;
         }*/
+
+    modifier inConsignorMode(){
+        require(isConsignorMode(),"not in consignor mode");
+        _;
+    }
+
+    modifier inWalkThroughMode(){
+        require(!isConsignorMode(),"not in walk through mode");
+        _;
+    }
 
     modifier nonPayable(){
         require(msg.value == 0, "nonPayable");

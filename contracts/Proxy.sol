@@ -428,6 +428,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     //if Mark is enabled, the calldata should be in form:
     //[selector, [abi-encoded params]], consignor address, target contract address, mark, sig-r-s-v
     //[unknown], 32 ,32, 32, 32-32-1
+    //sig is considered for all info before it
     //return 0 for mark is not suitable
     //return null-0 for address;
     function checkConsignor() internal view returns(bool isConsignor, address consignor){

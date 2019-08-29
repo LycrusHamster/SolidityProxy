@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/LycrusHamster/SolidityProxy#readme",
   "dependencies": {
-    "truffle-hdwallet-provider": "^1.0.1"
+    "truffle-hdwallet-provider": "^1.0.1",
+    "ethereumjs-util": "^6.0.0"
   }
 }

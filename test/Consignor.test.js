@@ -55,37 +55,7 @@ contract('ChainCallTest', async (accounts) => {
 
         //now add consignor, targetContractAddress, mark, and then sign it
 
-        console.log("consignor : " + consignorAddress.slice(2));
-        calldata = calldata + web3.utils.padLeft(consignorAddress.slice(2), 64);
-
-        console.log("target : " + consignorStorage.address.slice(2));
-        calldata = calldata + web3.utils.padLeft(consignorStorage.address.slice(2), 64);
-        calldata = calldata + web3.utils.padLeft(consignorMark.slice(2), 64);
-
-        console.log("calldata : " + calldata.slice(2));
-
-        let hash = web3.utils.keccak256(calldata);
-        console.log("hash : " + hash.slice(2));
-        /*let sig = await web3.eth.sign(hash, consignorAddress);
-
-        let v = sig.slice(130);
-        if(v === '00'){
-            v = '1b'
-        }
-        if(v === '01'){
-            v = '1c'
-        }
-        sig = sig.slice(0,130) + v;
-
-        console.log("sig : " + sig.slice(2));*/
-
-        let ecsig = ethereumjs.ecsign(Buffer.from(hash.substring(2), 'hex'), Buffer.from('a19c6fbea46424b76d1a3706ff99a9b819d10e474f4b79ce3b60040ebf7f0908', 'hex'));
-        let sig2 = ecsig.r.toString('hex') + ecsig.s.toString('hex') + ecsig.v.toString('16')
-        console.log("sig2 : " + sig2);
-
-
-        let data = calldata + sig2;
-
+        let data = consign(calldata, consignorStorage.address, '0xa19c6fbea46424b76d1a3706ff99a9b819d10e474f4b79ce3b60040ebf7f0908');
         console.log("data : " + data.slice(2));
 
         tx = await web3.eth.call(
@@ -106,9 +76,34 @@ contract('ChainCallTest', async (accounts) => {
     });
 
     it('testFunction2 with consignor', async () => {
-        tx = await consignor.testFunction2(testAddress, testBytes32, testUint256, [testUint256, testUint256_2],{from: deployerAddress});
+        tx = await consignor.testFunction2(testAddress, testBytes32, testUint256, [testUint256, testUint256_2], {from: deployerAddress});
 
         expect(tx.msgsender).to.equal(deployerAddress);
         expect(tx.c.toString('hex')).to.equal(testUint256.substring(2));
     });
 });
+
+const consign = function (calldata, toContractAddress, consignorPrivateKey) {
+
+    const consignorMark = '7e4f3c4fbc4d7bfb49012d8288defc0717f3e8b2de6308d424ff0c1353793bc9';
+
+    consignorPrivateKey = Buffer.from(consignorPrivateKey.substring(2), 'hex');
+    let consignorAddr = ethereumjs.privateToAddress(consignorPrivateKey);
+    consignorAddr = consignorAddr.toString('hex');
+
+    calldata = calldata + web3.utils.padLeft(consignorAddr, 64);
+    calldata = calldata + web3.utils.padLeft(toContractAddress.slice(2), 64);
+    calldata = calldata + web3.utils.padLeft(consignorMark, 64);
+
+    console.log("calldata inside : " + calldata.substring(2));
+
+    let hash2 = web3.utils.keccak256(calldata);
+
+    console.log("hash2 : " + hash2.substring(2));
+
+    let ecsig = ethereumjs.ecsign(Buffer.from(hash2.substring(2), 'hex'), consignorPrivateKey);
+    let sig = ecsig.r.toString('hex') + ecsig.s.toString('hex') + ecsig.v.toString('16')
+
+    calldata = calldata + sig;
+    return calldata;
+};

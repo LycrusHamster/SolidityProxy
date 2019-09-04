@@ -1,3 +1,5 @@
+const util = require('./utils/util.js');
+
 const ConsignorLogic = artifacts.require('./ConsignorLogic.sol');
 const ConsignorStorage = artifacts.require('./ConsignorStorage.sol');
 
@@ -55,7 +57,7 @@ contract('ChainCallTest', async (accounts) => {
 
         //now add consignor, targetContractAddress, mark, and then sign it
 
-        let data = consign(calldata, consignorStorage.address, '0xa19c6fbea46424b76d1a3706ff99a9b819d10e474f4b79ce3b60040ebf7f0908');
+        let data = util.consign(calldata, consignorStorage.address, '0xa19c6fbea46424b76d1a3706ff99a9b819d10e474f4b79ce3b60040ebf7f0908');
         console.log("data : " + data.slice(2));
 
         tx = await web3.eth.call(
@@ -83,6 +85,7 @@ contract('ChainCallTest', async (accounts) => {
     });
 });
 
+/*
 const consign = function (calldata, toContractAddress, consignorPrivateKey) {
 
     const consignorMark = '7e4f3c4fbc4d7bfb49012d8288defc0717f3e8b2de6308d424ff0c1353793bc9';
@@ -106,4 +109,4 @@ const consign = function (calldata, toContractAddress, consignorPrivateKey) {
 
     calldata = calldata + sig;
     return calldata;
-};
+};*/

@@ -11,6 +11,9 @@ For named-function(which means all function except the sysSaveSlotData function)
 However, if a proxy forward a
 */
 contract Delegate is Base {
+
+    event ResetParamSuccessful();
+
     constructor () public {
 
     }
@@ -35,14 +38,26 @@ contract Delegate is Base {
         defaultFallback();
     }
 
+    function getMsgSender() internal returns (address){
+        if (isConsignorMode()) {
+            return getConsignor();
+        }
+        return msg.sender;
+    }
+
     modifier inConsignorMode(){
-        require(isConsignorMode(),"not in consignor mode");
+        require(isConsignorMode(), "not in consignor mode");
         _;
     }
 
     modifier inWalkThroughMode(){
-        require(!isConsignorMode(),"not in walk through mode");
+        require(!isConsignorMode(), "not in walk through mode");
         _;
+    }
+
+    modifier resetParamNotifier(){
+        _;
+        emit ResetParamSuccessful();
     }
 
     /*function() payable external {

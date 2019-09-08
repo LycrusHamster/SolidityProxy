@@ -249,7 +249,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         do consignor check
         */
         (bool isConsignor, address consignor) = checkConsignor();
-        if(isConsignor == true && consignor == address(0x00)){
+        if (isConsignor == true && consignor == address(0x00)) {
             //consignor mode is on but the sig checks fails;
             if (sysGetRevertMessage() == 1) {
                 revert(string(abi.encodePacked("consignor mode fails : ", sysPrintBytesToHex(msg.data))));
@@ -431,28 +431,28 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     //sig is considered for all info before it
     //return 0 for mark is not suitable
     //return null-0 for address;
-    function checkConsignor() internal view returns(bool isConsignor, address consignor){
+    function checkConsignor() internal view returns (bool isConsignor, address consignor){
 
-        if(msg.data.length <161 || !isConsignorMode()){
+        if (msg.data.length < 161 || !isConsignorMode()) {
             return (false, address(0x00));
         }
 
         address target = getTargetContract();
-        if(target != address(this)){
+        if (target != address(this)) {
             return (true, address(0x00));
         }
-        bytes32 r = toBytes32(msg.data,msg.data.length -65);
-        bytes32 s = toBytes32(msg.data, msg.data.length -33);
-        uint8 v = toUint8(msg.data,msg.data.length -1);
+        bytes32 r = toBytes32(msg.data, msg.data.length - 65);
+        bytes32 s = toBytes32(msg.data, msg.data.length - 33);
+        uint8 v = toUint8(msg.data, msg.data.length - 1);
 
         //the text is all of selector, params, consignor, target and mark
-        bytes32 hash = keccak256(slice(msg.data,0,msg.data.length-65));
+        bytes32 hash = keccak256(slice(msg.data, 0, msg.data.length - 65));
 
         //reuse of target for consignor
-        target =  getConsignor();
+        target = getConsignor();
 
-        consignor = ecrecover(hash,v,r,s);
-        if(consignor != target){
+        consignor = ecrecover(hash, v, r, s);
+        if (consignor != target) {
             return (true, address(0x00));
         }
         return (true, consignor);

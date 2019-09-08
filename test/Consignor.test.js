@@ -33,6 +33,7 @@ contract('ChainCallTest', async (accounts) => {
 
     let tx;
     let res;
+    let abi;
 
     let delegateIndex;
     let delegate;
@@ -68,7 +69,8 @@ contract('ChainCallTest', async (accounts) => {
             }
         );
         console.log("tx : " + tx.slice(2));
-        let output = web3.eth.abi.decodeParameters(consignorLogic.abi[2].outputs, tx);
+        abi = consignorLogic.abi.filter(abi => abi.name === 'testFunction')[0];
+        let output = web3.eth.abi.decodeParameters(abi.outputs, tx);
         console.log(output);
 
         expect(output.target).to.equal(consignorStorage.address);

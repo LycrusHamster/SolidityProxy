@@ -19,35 +19,35 @@ contract Base {
             let length := mload(returnData)
             switch isRevert
             case 0x00{
-                return (add(returnData,0x20), length)
+                return (add(returnData, 0x20), length)
             }
             default{
-                revert (add(returnData,0x20), length)
+                revert (add(returnData, 0x20), length)
             }
         }
     }
 
 
     function isConsignorMode() internal pure returns (bool){
-        bytes32 mark = toBytes32(msg.data,msg.data.length -97);
-        if(mark == checkConsignorMark){
+        bytes32 mark = toBytes32(msg.data, msg.data.length - 97);
+        if (mark == checkConsignorMark) {
             return true;
         }
         return false;
     }
     //only in consignor mode, or you get wrong data or throw exception, I don't wan't to check consignor mode here again for wasting of time
     function getConsignor() internal pure returns (address){
-        return toAddressFromBytes32(msg.data,msg.data.length - 161);
+        return toAddressFromBytes32(msg.data, msg.data.length - 161);
     }
 
     //only in consignor mode, or you get wrong data or throw exception, I don't wan't to check consignor mode here again for wasting of time
     function getTargetContract() internal pure returns (address){
-        return toAddressFromBytes32(msg.data,msg.data.length - 129);
+        return toAddressFromBytes32(msg.data, msg.data.length - 129);
     }
 
 
     //this function is copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol
-    function toBytes32(bytes memory _bytes, uint _start) internal  pure returns (bytes32) {
+    function toBytes32(bytes memory _bytes, uint _start) internal pure returns (bytes32) {
         require(_bytes.length >= (_start + 32), "toBytes32, out of range");
         bytes32 tempBytes32;
 
@@ -59,12 +59,12 @@ contract Base {
     }
 
     function toAddressFromBytes32(bytes memory _bytes, uint _start) internal pure returns (address) {
-        bytes32 b = toBytes32(_bytes,_start);
+        bytes32 b = toBytes32(_bytes, _start);
         return address(uint256(b));
     }
 
     //this function is copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol
-    function toUint8(bytes memory _bytes, uint _start) internal  pure returns (uint8) {
+    function toUint8(bytes memory _bytes, uint _start) internal pure returns (uint8) {
         require(_bytes.length >= (_start + 1), "toUint8, out of range");
         uint8 tempUint;
 

@@ -14,7 +14,6 @@ contract('ProxyDelegateTest ', async (accounts) => {
   const emptyBytes32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
   const emptyAddress = '0x0000000000000000000000000000000000000000';
 
-
   let tx;
 
   let delegates;
@@ -80,7 +79,7 @@ contract('ProxyDelegateTest ', async (accounts) => {
 
   //1, 3
   it('replace logic2 by logic3', async () => {
-    tx = await storage.sysReplaceDelegates([logic2.address],[logic3.address]);
+    tx = await storage.sysReplaceDelegates([logic2.address], [logic3.address]);
 
     delegatesCount = (await storage.sysCountDelegate()).toNumber();
     delegates = await storage.sysGetDelegateAddresses();
@@ -137,10 +136,10 @@ contract('ProxyDelegateTest ', async (accounts) => {
 
   //3, 1
   it('delete logic2', async () => {
-    let flag =false;
-    try{
+    let flag = false;
+    try {
       tx = await storage.sysDelDelegates([logic2.address]);
-    }catch (e) {
+    } catch (e) {
       flag = true;
     }
     expect(flag).to.equal(true);

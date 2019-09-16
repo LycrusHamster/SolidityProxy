@@ -250,8 +250,8 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         /*
         do consignor check
         */
-        (, bool error) =  checkConsignors() ;
-        if(error){
+        (, bool error) = checkConsignors();
+        if (error) {
             if (sysGetRevertMessage() == 1) {
                 revert(string(abi.encodePacked("consignor mode fails : ", sysPrintBytesToHex(msg.data))));
             } else {
@@ -303,13 +303,11 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
             if (targetDelegate != address(0x00)) {
                 delegateCallExt(targetDelegate, msg.data);
             }
-
         } else {
             targetDelegate = sysGetDelegateBySelector(msg.sig);
             if (targetDelegate != address(0x00)) {
                 delegateCallExt(targetDelegate, msg.data);
             }
-
         }
 
         //goes here means this abi is not in the system abi look-up table
@@ -321,7 +319,6 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         } else {
             revert();
         }
-
     }
 
     function discover() internal {
@@ -365,7 +362,6 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         } else {
             return (true, !success, returnData);
         }
-
     }
 
     function sysPrintBytesToHex(bytes memory input) internal pure returns (string memory){
@@ -425,11 +421,13 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         _;
     }
 
-
+    //this could be used in eth_call
+    //BUT, CAN'T BE USED BY statical_call(normally is compiled by calling view function in contract)
+    //MUST NOT ENABLE CONSIGNOR MODE IN CALLING VIEW FUNCTION
     //if Mark is enabled, the calldata should be in form:
     //[selector, [abi-encoded params]], uuid, target , [mark, consignor, sig-r-s-v]|N-times
     //[unknown], 32, 32, [32, 32, 32-32-1]
-    //sig is considered for all info before its mark
+    //sig is considered for all info before its sig-r-s-v, which means including all data like mark and consignor
     //consignors : 0 for not in consignor mode, non-0 for how many consignors
     function checkConsignors() internal returns (uint256 consignors, bool error){
         uint256 markNumber = 0;
@@ -445,9 +443,14 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
             }
             r = toBytes32(msg.data, envelope + 64);
             s = toBytes32(msg.data, envelope + 96);
-            v = toUint8(msg.data, envelope + 97);
-            hash = keccak256(slice(msg.data, 0, envelope));
+            v = toUint8(msg.data, envelope + 128);
+            hash = keccak256(slice(msg.data, 0, envelope + 64));
+            //revert(string(abi.encodePacked("r : ",sysPrintBytes32ToHex(r), " s : ", sysPrintBytes32ToHex(s), " v : ", sysPrintUint256ToHex(v))));
+            //revert(string(abi.encodePacked("hash : ",sysPrintBytes32ToHex(hash))));
+            //revert(string(abi.encodePacked("consignor : ",sysPrintAddressToHex(toAddressFromBytes32(msg.data, envelope + 32)))));
             if (toAddressFromBytes32(msg.data, envelope + 32) != ecrecover(hash, v, r, s)) {
+
+                //revert(string(abi.encodePacked("ecrecover : ",sysPrintAddressToHex(ecrecover(hash, v, r, s)))));
                 return (0, true);
             }
             markNumber ++;
@@ -457,13 +460,14 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         if (markNumber > 0) {
             if (toAddressFromBytes32(msg.data, msg.data.length - markNumber * 129 - 32) != address(this)) {
                 return (markNumber, true);
+                //revert("target address");
             }
 
             bytes32 uuid = toBytes32(msg.data, msg.data.length - markNumber * 129 - 64);
 
             if (sysGetUuid(uuid)) {
                 return (markNumber, true);
-
+                //revert("uuid");
             }
             sysSetUuidUsed(uuid);
 
@@ -480,11 +484,10 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     }
 
     function sysGetUuid(bytes32 uuid) internal view returns (bool){
-        if(sysEnhancedMapGet(uuidSlot, uuid) == bytes32(uint256(0x01))){
+        if (sysEnhancedMapGet(uuidSlot, uuid) == bytes32(uint256(0x01))) {
             return true;
         }
         return false;
-
     }
 
     //this function is copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol

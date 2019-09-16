@@ -163,7 +163,6 @@ contract('EnhancedUniqueIndexMapTest ', async (accounts) => {
     tx = await enhancedUniqueIndexMap.sysUniqueIndexMapAddTest(slot, value3);
     tx = await enhancedUniqueIndexMap.sysUniqueIndexMapAddTest(slot, value4);
 
-
     size = await enhancedUniqueIndexMap.sysUniqueIndexMapSizeTest(slot);
     expect(4).to.equal(size.toNumber());
 

@@ -50,14 +50,13 @@ contract('ChainCallTest', async (accounts) => {
 
     tx = await callerLogic.setUint256Callee(testUint256);
     res = (await callerLogic.getUint256Callee()).toString('hex');
-    expect(testUint256).to.equal('0x'+res);
+    expect(testUint256).to.equal('0x' + res);
   });
-
 
   it('call setUint256CalleeAndGet', async () => {
 
     tx = await callerLogic.setUint256CalleeAndGet(testUint256_2);
     expect(tx.logs.length).to.equal(1);
-    expect(testUint256_2).to.equal('0x'+ tx.logs[0].args.u.toString('hex'))
+    expect(testUint256_2).to.equal('0x' + tx.logs[0].args.u.toString('hex'));
   });
 });

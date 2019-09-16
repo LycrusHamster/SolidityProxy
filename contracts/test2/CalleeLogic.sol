@@ -8,11 +8,11 @@ contract CalleeLogic is CalleeLayout, Delegate {
 
     }
 
-    function setUint256(uint256 _input) external{
+    function setUint256(uint256 _input) external {
         slot1 = _input;
     }
 
-    function getUint256() external view returns(uint256){
+    function getUint256() external view returns (uint256){
         return slot1;
     }
 }

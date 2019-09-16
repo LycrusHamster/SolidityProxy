@@ -5,11 +5,11 @@ import "../EnhancedMap.sol";
 contract EnhancedMapTest is EnhancedMap {
     constructor()public{}
 
-    function sysEnhancedMapSetTest(bytes32 slot, bytes32 key, bytes32 value) external  {
+    function sysEnhancedMapSetTest(bytes32 slot, bytes32 key, bytes32 value) external {
         sysEnhancedMapSet(slot, key, value);
     }
 
-    function sysEnhancedMapAddTest(bytes32 slot, bytes32 key, bytes32 value) external  {
+    function sysEnhancedMapAddTest(bytes32 slot, bytes32 key, bytes32 value) external {
         sysEnhancedMapAdd(slot, key, value);
     }
 
@@ -18,7 +18,7 @@ contract EnhancedMapTest is EnhancedMap {
     }
 
     function sysEnhancedMapReplaceTest(bytes32 slot, bytes32 key, bytes32 value) external {
-    sysEnhancedMapReplace(slot, key, value);
+        sysEnhancedMapReplace(slot, key, value);
     }
 
     function sysEnhancedMapGetTest(bytes32 slot, bytes32 key) external view returns (bytes32){

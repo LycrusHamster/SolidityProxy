@@ -180,7 +180,6 @@ contract('ProxyDelegateUserLookUpTest ', async (accounts) => {
     expect(logic4.address).to.equal(delegates[2]);
   });
 
-
   it('sysSetSigZero to logic4', async () => {
 
     res = await storage.sysGetSelectorsAndDelegates();
@@ -206,7 +205,6 @@ contract('ProxyDelegateUserLookUpTest ', async (accounts) => {
     expect('DefaultFallback').to.equal(tx.logs[0].event);
     expect(10).to.equal(tx.logs[0].args.value.toNumber());
     console.log(`gasLeft : ${tx.logs[0].args.gasLeft.toNumber()}`);
-
 
   });
 });

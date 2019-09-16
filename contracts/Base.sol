@@ -27,48 +27,6 @@ contract Base {
         }
     }
 
-    function isConsignorMode() internal pure returns (uint256 consignors){
-        uint256 markNumber = 0;
-        uint256 envelope = msg.data.length;
-        while (envelope >= 193) {
-            envelope = envelope - 129;
-            if (checkConsignorMark != toBytes32(msg.data, envelope)) {
-                break;
-            }
-            /*
-                        //escape check consignor's sig because we have already done this in Proxy
-                        //well, if you bypass Proxy and manipulate a calldata to hack, that violates the usage, but won't do harm to the system cause the Delegate doesn't care its storage
-                        r = toBytes32(msg.data, envelope + 64);
-                        s = toBytes32(msg.data, envelope + 96);
-                        v = toUint8(msg.data, envelope + 97);
-                        hash = keccak256(slice(msg.data, 0, envelope));
-                        if (toAddressFromBytes32(msg.data, envelope + 32) != ecrecover(hash, v, r, s)) {
-                            return (true, 0, true);
-                        }
-            */
-            markNumber ++;
-        }
-
-        return markNumber;
-    }
-
-    function getConsignors() internal pure returns (address[] memory){
-        uint256 consignorNumbers = isConsignorMode();
-        if (consignorNumbers == 0) {
-            return new address[](0);
-        }
-
-        address[] memory consignors = new address[] (consignorNumbers);
-
-        uint256 envelope = msg.data.length;
-        for(uint256 i = 0 ; i <consignorNumbers; i++ ){
-            envelope = envelope - 129;
-
-            consignors[i] = toAddressFromBytes32(msg.data, envelope + 32);
-        }
-        return consignors;
-    }
-
     //this function is copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol
     function toBytes32(bytes memory _bytes, uint _start) internal pure returns (bytes32) {
         require(_bytes.length >= (_start + 32), "toBytes32, out of range");

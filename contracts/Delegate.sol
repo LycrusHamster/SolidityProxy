@@ -39,14 +39,14 @@ contract Delegate is Base {
     }
 
     function getMsgSender() internal view returns (address){
-        if (isConsignorMode()>0) {
+        if (isConsignorMode() > 0) {
             return getConsignors()[0];
         }
         return msg.sender;
     }
 
     function getMsgSenders() internal view returns (address[] memory){
-        if (isConsignorMode()>0) {
+        if (isConsignorMode() > 0) {
             return getConsignors();
         }
         address[] memory ret = new address[](1);
@@ -54,13 +54,55 @@ contract Delegate is Base {
         return ret;
     }
 
+    function isConsignorMode() internal pure returns (uint256 consignors){
+        uint256 markNumber = 0;
+        uint256 envelope = msg.data.length;
+        while (envelope >= 193) {
+            envelope = envelope - 129;
+            if (checkConsignorMark != toBytes32(msg.data, envelope)) {
+                break;
+            }
+            /*
+                        //escape check consignor's sig because we have already done this in Proxy
+                        //well, if you bypass Proxy and manipulate a calldata to hack, that violates the usage, but won't do harm to the system cause the Delegate doesn't care its storage
+                        r = toBytes32(msg.data, envelope + 64);
+                        s = toBytes32(msg.data, envelope + 96);
+                        v = toUint8(msg.data, envelope + 97);
+                        hash = keccak256(slice(msg.data, 0, envelope));
+                        if (toAddressFromBytes32(msg.data, envelope + 32) != ecrecover(hash, v, r, s)) {
+                            return (true, 0, true);
+                        }
+            */
+            markNumber ++;
+        }
+
+        return markNumber;
+    }
+
+    function getConsignors() internal pure returns (address[] memory){
+        uint256 consignorNumbers = isConsignorMode();
+        if (consignorNumbers == 0) {
+            return new address[](0);
+        }
+
+        address[] memory consignors = new address[](consignorNumbers);
+
+        uint256 envelope = msg.data.length;
+        for (uint256 i = 0; i < consignorNumbers; i++) {
+            envelope = envelope - 129;
+
+            consignors[i] = toAddressFromBytes32(msg.data, envelope + 32);
+        }
+        return consignors;
+    }
+
     modifier inConsignorMode(){
-        require(isConsignorMode() >0, "not in consignor mode");
+        require(isConsignorMode() > 0, "not in consignor mode");
         _;
     }
 
     modifier inWalkThroughMode(){
-        require(isConsignorMode() ==0, "not in walk through mode");
+        require(isConsignorMode() == 0, "not in walk through mode");
         _;
     }
 

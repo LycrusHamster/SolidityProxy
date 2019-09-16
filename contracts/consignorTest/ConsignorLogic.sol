@@ -7,7 +7,7 @@ contract ConsignorLogic is ConsignorLayout, Delegate {
     constructor () public{
 
     }
-
+    event SomeEvent();
     function testConsignorFunction(address _a, bytes32 _b, uint256 _c, uint256[] calldata _d) external view inConsignorMode
     returns (address a, bytes32 b, uint256 c, uint256[] memory d, address consignor, address THIS, address msgsender, bytes memory callData){
         consignor = getMsgSender();
@@ -16,13 +16,13 @@ contract ConsignorLogic is ConsignorLayout, Delegate {
 
     function testConsignorsFunction(address _a, bytes32 _b, uint256 _c, uint256[] calldata _d) external view inConsignorMode
     returns (address a, bytes32 b, uint256 c, uint256[] memory d, address[] memory consignors, address THIS, address msgsender, bytes memory callData){
-        address[] memory consignors = getMsgSenders();
+        consignors = getMsgSenders();
         return (_a, _b, _c, _d, consignors, address(this), msg.sender, msg.data);
     }
 
     function testConsignorsLiteFunction() external view returns (address[] memory consignors, address consignor){
-        address[] memory consignors = getMsgSenders();
-        address consignor = getMsgSender();
+        consignors = getMsgSenders();
+        consignor = getMsgSender();
         return(consignors,consignor);
     }
 
@@ -31,4 +31,8 @@ contract ConsignorLogic is ConsignorLayout, Delegate {
         return (_a, _b, _c, _d, msg.sender);
     }
 
+    function testConsignorTx() external returns (bytes memory){
+        emit SomeEvent();
+        return hex"11223344";
+    }
 }

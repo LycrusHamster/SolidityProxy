@@ -34,10 +34,10 @@ const consign = function (calldata, consignorPrivateKeys) {
     calldata = calldata + web3.utils.padLeft(consignorAddr, 64);
 
     let hash2 = web3.utils.keccak256(calldata);
-    console.log("hash : " + hash2.substring(2));
+    //console.log("hash : " + hash2.substring(2));
     let ecsig = ethereumjs.ecsign(Buffer.from(hash2.substring(2), 'hex'), consignorPrivateKey);
     let sig = ecsig.r.toString('hex') + ecsig.s.toString('hex') + ecsig.v.toString('16');
-    console.log("sig : " + sig);
+    //console.log("sig : " + sig);
     calldata = calldata + sig;
   }
 

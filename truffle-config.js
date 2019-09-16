@@ -34,7 +34,7 @@ module.exports = {
     }, */
   compilers: {
     solc: {
-      version: '0.5.11', // let's use the native for faster work
+      version: '0.5.7', // let's use the native for faster work
       settings: {
         optimizer: {
           enabled: true, // Default: false

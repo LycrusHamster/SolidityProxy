@@ -12,6 +12,9 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         sysSaveSlotData(revertMessageSlot, bytes32(uint256(1)));
         //sysSetDelegateFallback(address(0));
     }
+    bytes32 constant TRUE = hex"0000000000000000000000000000000000000000000000000000000000000001";
+
+    bytes32 constant FALSE = hex"0000000000000000000000000000000000000000000000000000000000000000";
 
     bytes32 constant adminSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("adminSlot"))))));
 
@@ -242,6 +245,74 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     }
 
     //=====================internal functions=====================
+    //this could be used in eth_call
+    //BUT, CAN'T BE USED BY statical_call(normally is compiled by calling view function in contract)
+    //MUST NOT ENABLE CONSIGNOR MODE IN CALLING VIEW FUNCTION
+    //if Mark is enabled, the calldata should be in form:
+    //[selector, [abi-encoded params]], uuid, target , [mark, consignor, sig-r-s-v]|N-times
+    //[unknown], 32, 32, [32, 32, 32-32-1]
+    //sig is considered for all info before its sig-r-s-v, which means including all data like mark and consignor
+    //consignors : 0 for not in consignor mode, non-0 for how many consignors
+    function checkConsignors() internal returns (uint256 consignors){
+        uint256 markNumber = 0;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        bytes32 hash;
+        uint256 envelope = msg.data.length;
+        while (envelope >= 193) {
+            envelope = envelope - 129;
+            if (checkConsignorMark != toBytes32(msg.data, envelope)) {
+                //revert("mark not found!");
+                break;
+            }
+            r = toBytes32(msg.data, envelope + 64);
+            s = toBytes32(msg.data, envelope + 96);
+            v = toUint8(msg.data, envelope + 128);
+            hash = keccak256(slice(msg.data, 0, envelope + 64));
+            //revert(string(abi.encodePacked("r : ",sysPrintBytes32ToHex(r), " s : ", sysPrintBytes32ToHex(s), " v : ", sysPrintUint256ToHex(v))));
+            //revert(string(abi.encodePacked("hash : ",sysPrintBytes32ToHex(hash))));
+            //revert(string(abi.encodePacked("consignor : ",sysPrintAddressToHex(toAddressFromBytes32(msg.data, envelope + 32)))));
+            address consignor = toAddressFromBytes32(msg.data, envelope + 32);
+            if (consignor != ecrecover(hash, v, r, s)) {
+
+                if (sysGetRevertMessage() == 1) {
+                    revert(string(abi.encodePacked("ecrecover error : ", sysPrintAddressToHex(consignor))));
+                } else {
+                    revert();
+                }
+            }
+            markNumber ++;
+        }
+
+        //now we get how many marks stored by markNumber
+        if (markNumber > 0) {
+            address target = toAddressFromBytes32(msg.data, msg.data.length - markNumber * 129 - 32);
+            if (target != address(this)) {
+                if (sysGetRevertMessage() == 1) {
+                    revert(string(abi.encodePacked("target address error : ", sysPrintAddressToHex(target))));
+                } else {
+                    revert();
+                }
+            }
+
+            bytes32 uuid = toBytes32(msg.data, msg.data.length - markNumber * 129 - 64);
+            if (sysGetUuid(uuid)) {
+                if (sysGetRevertMessage() == 1) {
+                    revert(string(abi.encodePacked("uuid error : ", sysPrintBytes32ToHex(uuid))));
+                } else {
+                    revert();
+                }
+            }
+            sysSetUuidUsed(uuid);
+
+            return markNumber;
+        }
+
+        //not found any marks, deal like normal ethereum tx
+        return 0;
+    }
+
 
     //since low-level address.delegateCall is available in solidity,
     //we don't need to write assembly
@@ -250,14 +321,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         /*
         do consignor check
         */
-        (, bool error) = checkConsignors();
-        if (error) {
-            if (sysGetRevertMessage() == 1) {
-                revert(string(abi.encodePacked("consignor mode fails : ", sysPrintBytesToHex(msg.data))));
-            } else {
-                revert();
-            }
-        }
+        checkConsignors();
 
         /*
         let us check if the callData enabled consignor.
@@ -364,6 +428,17 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         }
     }
 
+    function sysSetUuidUsed(bytes32 uuid) internal {
+        sysEnhancedMapSet(uuidSlot, uuid, TRUE);
+    }
+
+    function sysGetUuid(bytes32 uuid) internal view returns (bool){
+        if (sysEnhancedMapGet(uuidSlot, uuid) == TRUE) {
+            return true;
+        }
+        return false;
+    }
+
     function sysPrintBytesToHex(bytes memory input) internal pure returns (string memory){
         bytes memory ret = new bytes(input.length * 2);
         bytes memory alphabet = "0123456789abcdef";
@@ -419,75 +494,6 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
             }
         }
         _;
-    }
-
-    //this could be used in eth_call
-    //BUT, CAN'T BE USED BY statical_call(normally is compiled by calling view function in contract)
-    //MUST NOT ENABLE CONSIGNOR MODE IN CALLING VIEW FUNCTION
-    //if Mark is enabled, the calldata should be in form:
-    //[selector, [abi-encoded params]], uuid, target , [mark, consignor, sig-r-s-v]|N-times
-    //[unknown], 32, 32, [32, 32, 32-32-1]
-    //sig is considered for all info before its sig-r-s-v, which means including all data like mark and consignor
-    //consignors : 0 for not in consignor mode, non-0 for how many consignors
-    function checkConsignors() internal returns (uint256 consignors, bool error){
-        uint256 markNumber = 0;
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
-        bytes32 hash;
-        uint256 envelope = msg.data.length;
-        while (envelope >= 193) {
-            envelope = envelope - 129;
-            if (checkConsignorMark != toBytes32(msg.data, envelope)) {
-                break;
-            }
-            r = toBytes32(msg.data, envelope + 64);
-            s = toBytes32(msg.data, envelope + 96);
-            v = toUint8(msg.data, envelope + 128);
-            hash = keccak256(slice(msg.data, 0, envelope + 64));
-            //revert(string(abi.encodePacked("r : ",sysPrintBytes32ToHex(r), " s : ", sysPrintBytes32ToHex(s), " v : ", sysPrintUint256ToHex(v))));
-            //revert(string(abi.encodePacked("hash : ",sysPrintBytes32ToHex(hash))));
-            //revert(string(abi.encodePacked("consignor : ",sysPrintAddressToHex(toAddressFromBytes32(msg.data, envelope + 32)))));
-            if (toAddressFromBytes32(msg.data, envelope + 32) != ecrecover(hash, v, r, s)) {
-
-                //revert(string(abi.encodePacked("ecrecover : ",sysPrintAddressToHex(ecrecover(hash, v, r, s)))));
-                return (0, true);
-            }
-            markNumber ++;
-        }
-
-        //now we get how many marks stored by markNumber
-        if (markNumber > 0) {
-            if (toAddressFromBytes32(msg.data, msg.data.length - markNumber * 129 - 32) != address(this)) {
-                return (markNumber, true);
-                //revert("target address");
-            }
-
-            bytes32 uuid = toBytes32(msg.data, msg.data.length - markNumber * 129 - 64);
-
-            if (sysGetUuid(uuid)) {
-                return (markNumber, true);
-                //revert("uuid");
-            }
-            sysSetUuidUsed(uuid);
-
-            return (markNumber, false);
-        }
-
-        //not found any marks, deal like normal ethereum tx
-
-        return (0, false);
-    }
-
-    function sysSetUuidUsed(bytes32 uuid) internal {
-        sysEnhancedMapAdd(uuidSlot, uuid, bytes32(uint256(0x01)));
-    }
-
-    function sysGetUuid(bytes32 uuid) internal view returns (bool){
-        if (sysEnhancedMapGet(uuidSlot, uuid) == bytes32(uint256(0x01))) {
-            return true;
-        }
-        return false;
     }
 
     //this function is copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol

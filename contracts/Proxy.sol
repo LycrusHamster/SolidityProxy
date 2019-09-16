@@ -32,6 +32,8 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     //0xe2bb2e16cbb16a10fab839b4a5c3820d63a910f4ea675e7821846c4b2d3041dc
     bytes32 constant userSigZeroSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("userSigZeroSlot"))))));
 
+    bytes32 constant uuidSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("uuidSlot"))))));
+
     event DelegateSet(address delegate, bool activated);
     event AbiSet(bytes4 abi, address delegate, bytes32 slot);
     event PrintBytes(bytes data);
@@ -246,6 +248,24 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     function() payable external outOfService {
 
         /*
+        do consignor check
+        */
+        (, bool error) =  checkConsignors() ;
+        if(error){
+            if (sysGetRevertMessage() == 1) {
+                revert(string(abi.encodePacked("consignor mode fails : ", sysPrintBytesToHex(msg.data))));
+            } else {
+                revert();
+            }
+        }
+
+        /*
+        let us check if the callData enabled consignor.
+        If yes, check the consignor rules and then pass/reject
+        If not, just work through
+        */
+
+        /*
         the default transfer will set data to empty,
         so that the msg.data.length = 0 and msg.sig = bytes4(0x00000000),
 
@@ -383,6 +403,12 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         );
     }
 
+    function sysPrintBytes32ToHex(bytes32 input) internal pure returns (string memory){
+        return sysPrintBytesToHex(
+            abi.encodePacked(input)
+        );
+    }
+
     modifier onlyAdmin(){
         require(msg.sender == sysGetAdmin(), "only admin");
         _;
@@ -399,6 +425,133 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         _;
     }
 
+
+    //if Mark is enabled, the calldata should be in form:
+    //[selector, [abi-encoded params]], uuid, target , [mark, consignor, sig-r-s-v]|N-times
+    //[unknown], 32, 32, [32, 32, 32-32-1]
+    //sig is considered for all info before its mark
+    //consignors : 0 for not in consignor mode, non-0 for how many consignors
+    function checkConsignors() internal returns (uint256 consignors, bool error){
+        uint256 markNumber = 0;
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+        bytes32 hash;
+        uint256 envelope = msg.data.length;
+        while (envelope >= 193) {
+            envelope = envelope - 129;
+            if (checkConsignorMark != toBytes32(msg.data, envelope)) {
+                break;
+            }
+            r = toBytes32(msg.data, envelope + 64);
+            s = toBytes32(msg.data, envelope + 96);
+            v = toUint8(msg.data, envelope + 97);
+            hash = keccak256(slice(msg.data, 0, envelope));
+            if (toAddressFromBytes32(msg.data, envelope + 32) != ecrecover(hash, v, r, s)) {
+                return (0, true);
+            }
+            markNumber ++;
+        }
+
+        //now we get how many marks stored by markNumber
+        if (markNumber > 0) {
+            if (toAddressFromBytes32(msg.data, msg.data.length - markNumber * 129 - 32) != address(this)) {
+                return (markNumber, true);
+            }
+
+            bytes32 uuid = toBytes32(msg.data, msg.data.length - markNumber * 129 - 64);
+
+            if (sysGetUuid(uuid)) {
+                return (markNumber, true);
+
+            }
+            sysSetUuidUsed(uuid);
+
+            return (markNumber, false);
+        }
+
+        //not found any marks, deal like normal ethereum tx
+
+        return (0, false);
+    }
+
+    function sysSetUuidUsed(bytes32 uuid) internal {
+        sysEnhancedMapAdd(uuidSlot, uuid, bytes32(uint256(0x01)));
+    }
+
+    function sysGetUuid(bytes32 uuid) internal view returns (bool){
+        if(sysEnhancedMapGet(uuidSlot, uuid) == bytes32(uint256(0x01))){
+            return true;
+        }
+        return false;
+
+    }
+
+    //this function is copied from https://github.com/GNSPS/solidity-bytes-utils/blob/master/contracts/BytesLib.sol
+    function slice(
+        bytes memory _bytes,
+        uint _start,
+        uint _length
+    )
+    internal
+    pure
+    returns (bytes memory)
+    {
+        require(_bytes.length >= (_start + _length), "slice, out of range");
+
+        bytes memory tempBytes;
+
+        assembly {
+            switch iszero(_length)
+            case 0 {
+            // Get a location of some free memory and store it in tempBytes as
+            // Solidity does for memory variables.
+                tempBytes := mload(0x40)
+
+            // The first word of the slice result is potentially a partial
+            // word read from the original array. To read it, we calculate
+            // the length of that partial word and start copying that many
+            // bytes into the array. The first word we copy will start with
+            // data we don't care about, but the last `lengthmod` bytes will
+            // land at the beginning of the contents of the new array. When
+            // we're done copying, we overwrite the full first word with
+            // the actual length of the slice.
+                let lengthmod := and(_length, 31)
+
+            // The multiplication in the next line is necessary
+            // because when slicing multiples of 32 bytes (lengthmod == 0)
+            // the following copy loop was copying the origin's length
+            // and then ending prematurely not copying everything it should.
+                let mc := add(add(tempBytes, lengthmod), mul(0x20, iszero(lengthmod)))
+                let end := add(mc, _length)
+
+                for {
+                // The multiplication in the next line has the same exact purpose
+                // as the one above.
+                    let cc := add(add(add(_bytes, lengthmod), mul(0x20, iszero(lengthmod))), _start)
+                } lt(mc, end) {
+                    mc := add(mc, 0x20)
+                    cc := add(cc, 0x20)
+                } {
+                    mstore(mc, mload(cc))
+                }
+
+                mstore(tempBytes, _length)
+
+            //update free-memory pointer
+            //allocating the array padded to 32 bytes like the compiler does now
+                mstore(0x40, and(add(mc, 31), not(31)))
+            }
+            //if we want a zero-length slice let's just return a zero-length array
+            default {
+                tempBytes := mload(0x40)
+
+                mstore(0x40, add(tempBytes, 0x20))
+            }
+        }
+
+        return tempBytes;
+    }
 }
 
 

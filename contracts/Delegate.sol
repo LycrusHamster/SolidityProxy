@@ -11,6 +11,9 @@ For named-function(which means all function except the sysSaveSlotData function)
 However, if a proxy forward a
 */
 contract Delegate is Base {
+
+    event ResetParamSuccessful();
+
     constructor () public {
 
     }
@@ -25,7 +28,7 @@ contract Delegate is Base {
     //but you can use msg.value freely in internal function
     //or you can access msg.value by assembly by yourself too :)
     //because defaultFallback is only called by function(), which is fallback, so it is payable.
-    //thus if you wan't reject receiving ETH, just add nonPayable
+    //thus if you want to reject receiving ETH, just add 'nonPayable' by overriding it, DO NOT MODIFY code here
     function defaultFallback() /*nonPayable*/ internal {
         returnAsm(false, notFoundMark);
     }
@@ -33,6 +36,37 @@ contract Delegate is Base {
     function() payable external {
         //target function doesn't hit normal functions
         defaultFallback();
+    }
+
+    function getMsgSender() internal view returns (address){
+        if (isConsignorMode()>0) {
+            return getConsignors()[0];
+        }
+        return msg.sender;
+    }
+
+    function getMsgSenders() internal view returns (address[] memory){
+        if (isConsignorMode()>0) {
+            return getConsignors();
+        }
+        address[] memory ret = new address[](1);
+        ret[0] = msg.sender;
+        return ret;
+    }
+
+    modifier inConsignorMode(){
+        require(isConsignorMode() >0, "not in consignor mode");
+        _;
+    }
+
+    modifier inWalkThroughMode(){
+        require(isConsignorMode() ==0, "not in walk through mode");
+        _;
+    }
+
+    modifier resetParamNotifier(){
+        _;
+        emit ResetParamSuccessful();
     }
 
     /*function() payable external {

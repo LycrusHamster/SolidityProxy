@@ -16,12 +16,12 @@ contract ConsignorLogic is ConsignorLayout, Delegate {
 
     function testConsignorsFunction(address _a, bytes32 _b, uint256 _c, uint256[] calldata _d) external view inConsignorMode
     returns (address a, bytes32 b, uint256 c, uint256[] memory d, address[] memory consignors, address THIS, address msgsender, bytes memory callData){
-        consignors = getMsgSenders();
+        consignors = getMsgSenders(0);
         return (_a, _b, _c, _d, consignors, address(this), msg.sender, msg.data);
     }
 
     function testConsignorsLiteFunction() external view returns (address[] memory consignors, address consignor){
-        consignors = getMsgSenders();
+        consignors = getMsgSenders(0);
         consignor = getMsgSender();
         return(consignors,consignor);
     }

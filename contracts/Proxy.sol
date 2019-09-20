@@ -1,10 +1,14 @@
-pragma solidity ^0.5.7;
+pragma solidity ^0.5.11;
 
 import "./Base.sol";
 import "./EnhancedMap.sol";
 import "./EnhancedUniqueIndexMap.sol";
+import "./StringAppend.sol";
 
 contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
+
+    using StringAppend for *;
+
     constructor (address admin) public {
         sysSaveSlotData(adminSlot, bytes32(uint256(admin)));
         sysSaveSlotData(userSigZeroSlot, bytes32(uint256(0)));
@@ -38,8 +42,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     bytes32 constant uuidSlot = keccak256(abi.encodePacked(keccak256(abi.encodePacked(keccak256(abi.encodePacked("uuidSlot"))))));
 
     event DelegateSet(address delegate, bool activated);
-    event AbiSet(bytes4 abi, address delegate, bytes32 slot);
-    event PrintBytes(bytes data);
+
     //===================================================================================
 
     function sysCountDelegate() public view returns (uint256){
@@ -277,7 +280,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
             if (consignor != ecrecover(hash, v, r, s)) {
 
                 if (sysGetRevertMessage() == 1) {
-                    revert(string(abi.encodePacked("ecrecover error : ", sysPrintAddressToHex(consignor))));
+                    revert("ecrecover error : ".appendAddress(consignor));
                 } else {
                     revert();
                 }
@@ -290,7 +293,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
             address target = toAddressFromBytes32(msg.data, msg.data.length - markNumber * 129 - 32);
             if (target != address(this)) {
                 if (sysGetRevertMessage() == 1) {
-                    revert(string(abi.encodePacked("target address error : ", sysPrintAddressToHex(target))));
+                    revert("target address error : ".appendAddress(target));
                 } else {
                     revert();
                 }
@@ -299,7 +302,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
             bytes32 uuid = toBytes32(msg.data, msg.data.length - markNumber * 129 - 64);
             if (sysGetUuid(uuid)) {
                 if (sysGetRevertMessage() == 1) {
-                    revert(string(abi.encodePacked("uuid error : ", sysPrintBytes32ToHex(uuid))));
+                    revert("uuid error : ".appendBytes32(uuid));
                 } else {
                     revert();
                 }
@@ -379,7 +382,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
 
         //hit here means not found selector
         if (sysGetRevertMessage() == 1) {
-            revert(string(abi.encodePacked("function selector not found : ", sysPrintBytes4ToHex(msg.sig))));
+            revert("function selector not found : ".appendBytes4(msg.sig));
         } else {
             revert();
         }
@@ -439,47 +442,6 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
         return false;
     }
 
-    function sysPrintBytesToHex(bytes memory input) internal pure returns (string memory){
-        bytes memory ret = new bytes(input.length * 2);
-        bytes memory alphabet = "0123456789abcdef";
-        for (uint256 i = 0; i < input.length; i++) {
-            bytes32 t = bytes32(input[i]);
-            bytes32 tt = t >> 31 * 8;
-            uint256 b = uint256(tt);
-            uint256 high = b / 0x10;
-            uint256 low = b % 0x10;
-            byte highAscii = alphabet[high];
-            byte lowAscii = alphabet[low];
-            ret[2 * i] = highAscii;
-            ret[2 * i + 1] = lowAscii;
-        }
-        return string(ret);
-    }
-
-    function sysPrintAddressToHex(address input) internal pure returns (string memory){
-        return sysPrintBytesToHex(
-            abi.encodePacked(input)
-        );
-    }
-
-    function sysPrintBytes4ToHex(bytes4 input) internal pure returns (string memory){
-        return sysPrintBytesToHex(
-            abi.encodePacked(input)
-        );
-    }
-
-    function sysPrintUint256ToHex(uint256 input) internal pure returns (string memory){
-        return sysPrintBytesToHex(
-            abi.encodePacked(input)
-        );
-    }
-
-    function sysPrintBytes32ToHex(bytes32 input) internal pure returns (string memory){
-        return sysPrintBytesToHex(
-            abi.encodePacked(input)
-        );
-    }
-
     modifier onlyAdmin(){
         require(msg.sender == sysGetAdmin(), "only admin");
         _;
@@ -488,7 +450,7 @@ contract Proxy is Base, EnhancedMap, EnhancedUniqueIndexMap {
     modifier outOfService(){
         if (sysGetOutOfService() == uint256(1)) {
             if (sysGetRevertMessage() == 1) {
-                revert(string(abi.encodePacked("Proxy is out-of-service right now")));
+                revert("Proxy is out-of-service right now");
             } else {
                 revert();
             }
